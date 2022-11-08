@@ -19,7 +19,7 @@ class Card(Model):
     name = CharField(max_length=128)
     cardlist = ForeignKey(CardList, on_delete=CASCADE)
     #users = ManyToManyField(User)
-    groups = ManyToManyField(Group)
+    groups = ManyToManyField(Group, null=True, blank=True)
 
     objects = CardManager
 
