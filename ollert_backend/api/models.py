@@ -7,6 +7,9 @@ from django.db.models import Model, OneToOneField, SET_NULL, ManyToManyField, Fo
 class CardList(Model):
     name = CharField(max_length=128)
 
+    def __str__(self):
+        return self.name
+
 
 class CardManager(Manager):
     """ Selects related CardList by default, so we can display their names. """
