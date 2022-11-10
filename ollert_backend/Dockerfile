@@ -1,7 +1,7 @@
 # base image  
 FROM python:3.10   
 # setup environment variable  
-ENV DockerHOME=/home/app/webapp  
+ENV DockerHOME=/home/app/webapi
 
 # set work directory  
 RUN mkdir -p $DockerHOME  

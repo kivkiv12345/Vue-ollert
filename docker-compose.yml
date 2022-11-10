@@ -1,0 +1,28 @@
+services:
+  db:
+    image: postgres
+    volumes:
+      - ./db_volume/db:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+  api:
+    build: ollert_backend
+    command: python3 manage.py makemigrations && python3 manage.py migrate && python3 manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/code
+    ports:
+      - "8000:8000"
+    environment:
+      - POSTGRES_NAME=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    depends_on:
+      - db
+  spa:
+    build: ollert_frontend
+    ports:
+      - "8080:8080"
+    depends_on:
+      - api
