@@ -18,18 +18,29 @@ defineProps({
 import Card from './Card.vue';
 export default {
     mounted() {
-        // document.getElementById('list-' + this.indent).addEventListener('mousemove', (pos) => console.log(this.indent + ":" + pos))
+        document.getElementById('list-' + this.indent).addEventListener('mouseenter', this.mouseEnteredList)
+        document.getElementById('list-' + this.indent).addEventListener('mouseleave', this.mouseLeftList);
+
         console.log(this.indent)
+
+        console.log(this.items);
     },
     methods: {
-        mouseEntered(list, row) {
-            this.$emit("mouseEntered", list, row);
+        mouseEnteredCard(row) {
+            this.$emit("mouseEntered", row, true);
         },
-        mouseLeft(list, row) {
-            this.$emit("mouseLeft", list, row);
+        mouseEnteredList() {
+            this.$emit("mouseEntered", this.indent, false);
         },
-        selectCard(list, row) {
-            this.$emit('selectCard', list, row);
+        mouseLeftCard(row) {
+            //                              true if we have left a card false if we have left a list
+            this.$emit("mouseLeft", row, true);
+        },
+        mouseLeftList() {
+            this.$emit("mouseLeft", this.list, false)
+        },
+        selectCard(row) {
+            this.$emit('selectCard', this.indent, row);
         },
     }
 }
@@ -41,8 +52,9 @@ export default {
             {{ name }}
         </h2>
         <div class="items">
-            <Card v-for="x, i in items" :name="x.name" :indent="i" :row="indent" @mouse-entered="mouseEntered"
-                @mouse-left="mouseLeft" @select-card="selectCard" class="unselectable">
+            <Card v-for="x, i in items" :name="x.name" :indent="i" :row="indent" :description="x.description"
+                @mouse-entered="mouseEnteredCard" @mouse-left="mouseLeftCard" @select-card="selectCard"
+                class="unselectable">
 
             </Card>
         </div>

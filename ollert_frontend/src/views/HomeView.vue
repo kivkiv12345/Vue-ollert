@@ -40,65 +40,58 @@ export default {
 
 		document.addEventListener('mouseup', this.mouseReleased, true)
 		this.cardLists = await getCardLists();
+
+
 	},
 	components: { CardLists },
 	methods: {
-		moveCard(list, row) {
-			// console.log(list, row);
-
-			this.currentPositionList = list;
-			this.currentPositionRow = row;
+		mouseEntered(indent, isCard) {
+			if (isCard) {
+				this.currentPositionRow = indent;
+			} else if (!isCard) {
+				this.currentPositionList = indent;
+			}
 
 			// console.log(this.cardLists[list].cards[row].name);
 		},
-		mouseLeft(list, row) {
-			if (this.currentPositionList == list && this.currentPositionRow == row) {
-				// console.log("Left " + list + "-" + row)
+		mouseLeft(indent, leavingCard) {
+			if (this.currentPositionList == indent && !leavingCard) {
 				this.currentPositionList = NaN;
+			} if (this.currentPositionRow == indent && leavingCard) {
 				this.currentPositionRow = NaN;
-			} else {
-				console.log("Could not leave")
 			}
 		},
 		selectCard(list, row) {
-			this.movingCardList = list;
 			this.movingCardRow = row;
+			this.movingCardList = list;
+			console.log("Selecting", row, list);
 		},
 		mouseReleased(pos) {
 			if (!isNaN(this.currentPositionList)) {
 				console.log("Moving card to", this.currentPositionList, this.currentPositionRow);
-
-
 				this.postMoveCard(this.currentPositionList, this.currentPositionRow, this.movingCardList, this.movingCardRow)
-
-				// try {
-				// 	// console.log(this.cardLists, "[", this.currentPositionList, "].cards.insert(", this.currentPositionRow, ", ", this.cardLists[this.movingCardList].cards[his.movingCardRow]);
-				// 	let cardlist = this.cardLists.at(this.currentPositionList);
-				// 	console.log("cardlist:", cardlist);
-				// 	if (cardlist != undefined) {
-				// 		let cards = cardlist.cards;
-				// 		let movingcard = this.cardLists.at(this.movingCardList).cards.at(this.movingCardRow);
-				// 		cards.splice(0, this.currentPositionRow, movingcard);
-				// 		console.log("cards:", cards)
-				// 	}
-				// } catch (e) {
-				// 	console.log(e);
-
-				// }
 			}
 		},
 		async postMoveCard(list, row, from_list, from_row) {
+			let body = {
+				"card_id": this.cardLists[from_list].cards[from_row].id, // Cards id
+				"list_id": this.cardLists[list].id, // Lists id
+			}
+
+			if (!isNaN(row)) {
+				body["row"] = row;
+			}
+
+			console.log(body);
+
+
 			let raw_lists = await fetch("http://" + import.meta.env.VITE_DATABASE_URL + "/card-move/", {
 				method: "POST",
 				headers: {
 					"Accept": "application/json",
 					"Content-Type": "application/json"
 				},
-				body: JSON.stringify({
-					"card_id": this.cardLists[from_list].cards[from_row].id, // Cards id
-					"list_id": this.cardLists[list].id, // Lists id
-					"row": row, // Position in list.
-				})
+				body: JSON.stringify(body)
 			});
 
 			let x = await raw_lists.json();
@@ -117,8 +110,8 @@ export default {
 			bruh
 		</button>
 		<div class="card-list-holder">
-			<CardLists v-for="x, i in cardLists" :name="x.name" :items="x.cards" :indent="i" @mouse-entered="moveCard"
-				@mouse-left="mouseLeft" @select-card="selectCard">
+			<CardLists v-for="x, i in cardLists" :name="x.name" :items="x.cards" :indent="i"
+				@mouse-entered="mouseEntered" @mouse-left="mouseLeft" @select-card="selectCard">
 
 			</CardLists>
 		</div>
