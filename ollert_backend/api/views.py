@@ -1,28 +1,32 @@
 """ Generic creation of CRUD based web API views """
-from enum import Enum
-from itertools import chain
+
 # TODO Kevin: This is copied from ProjectManager (https://github.com/kivkiv12345/ProjectManager), not really ideal.
 
-from typing import Type, Iterable
 
-from django.db.models.fields.related_descriptors import ReverseManyToOneDescriptor, ReverseOneToOneDescriptor, \
-    ManyToManyDescriptor
+from enum import Enum
+from itertools import chain
 from django.urls import path
+from typing import Type, Iterable
 from rest_framework import status
-from django.db.models import Model, QuerySet
+from .models import CardList, Card
 from django.shortcuts import render
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
 from rest_framework.serializers import ModelSerializer
-
-from .models import CardList, Card
+from django.db.models import Model, QuerySet, ForeignKey
+from django.db.models.fields.related_descriptors import ReverseManyToOneDescriptor, ReverseOneToOneDescriptor, \
+    ManyToManyDescriptor
 
 _LIST_SUFFIX = '-list'
 _DETAIL_SUFFIX = '-detail'
 _CREATE_SUFFIX = '-create'
 _UPDATE_SUFFIX = '-update'
 _DELETE_SUFFIX = '-delete'
+
+_DEFAULT_DEPTH = 2  # Default serialization depth.
+_MAXIMUM_DEPTH = 10
+assert _DEFAULT_DEPTH < _MAXIMUM_DEPTH
 
 
 class CardSerializer(ModelSerializer):
@@ -44,11 +48,6 @@ def serialize_cardlists(instances: QuerySet[CardList] = None) -> dict:
         instances = CardList.objects.all()
     serializer = CardListSerializer(instances, many=True)
     return serializer.data
-
-
-@api_view(['GET'])
-def cardlist_list(request: Request):
-    return Response(serialize_cardlists())
 
 
 @api_view(['POST'])
@@ -91,21 +90,27 @@ def generic_serializer(crud_model: Type[Model], depth_limit: int = 0, field_excl
     :returns: The new ModelSerializer class.
     """
 
-    # class GenericSerializer(ModelSerializer):
-    #     #cards = CardSerializer(many=True)
-    #
-    #     class Meta:
-    #         model = crud_model
-    #         fields = [field.name for field in chain(crud_model._meta.fields, crud_model._meta.related_objects) if field]
-    #         depth = depth_limit
+    if depth_limit > 0:  # We may create serializers for related sets...
+        related_sets = {  # Serialize related sets, and disallow the related model from going back through the ForeignKey
+            rel.related_name: generic_serializer(rel.related_model, depth_limit-1, {rel.remote_field.name})
+            for rel in crud_model._meta.related_objects if rel.name not in field_exclude
+        } | {  # Serialize ForeignKey, and disallow the related model from going back through the related set
+            field.name: generic_serializer(field.related_model, depth_limit-1, {field.remote_field.name})
+            for field in crud_model._meta.fields if isinstance(field, ForeignKey) and field.name not in field_exclude
+        }
+    else:
+        related_sets = {}
+
+    # TODO Kevin: Why won't Django REST stop serializing ForeignKeys that are in Meta.exclude and not in Meta.fields ??
 
     # Create the class using the type function, to allow setting custom serializers for related sets
     GenericSerializer = type('GenericSerializer', (ModelSerializer,), {
-        # TODO Kevin: Serialize related sets here, pass on excluded fields
+        **related_sets,
         'Meta': type('Meta', (), {
             "model": crud_model,
-            "fields": [field.name for field in chain(crud_model._meta.fields, crud_model._meta.related_objects) if field],
-            "depth": depth_limit,
+            "fields": [field.name for field in chain(crud_model._meta.fields, crud_model._meta.related_objects) if field.name not in field_exclude],
+            "depth": depth_limit if related_sets else 0,  # We basically ignore depth, when we generate the classes ourselves ¯\_(ツ)_/¯
+            "exclude": tuple(field_exclude),  # This doesn't really seem to do anything... *sigh*
         })
     })
 
@@ -120,33 +125,49 @@ class CrudOps(Enum):
     DELETE = 4
 
 
-def generic_crud(crud_model: Type[Model], exclude: set[CrudOps] = None) -> Iterable[path]:
+def generic_crud(crud_model: Type[Model], exclude: Iterable[CrudOps] = None) -> Iterable[path]:
     """
     Creates generic CRUD views for the specified model
 
     :param crud_model: Model to create web API CRUD operations for
+    :param exclude: CRUD operations to exclude.
 
     :returns: A tuple of path() instances to be inserted into your app's urlpatterns
     """
 
     # TODO Kevin: Subclass ModelSerializer to support saving nested
-    GenericSerializer = generic_serializer(crud_model, 2)
+    generic_serializers = {_DEFAULT_DEPTH: generic_serializer(crud_model, _DEFAULT_DEPTH)}
+
+    def _get_or_create_serializer(request: Request) -> Type[ModelSerializer]:
+        """ Create a new serializer class for the specified depth if required. """
+
+        try:
+            depth = int(request.GET.get('depth', _DEFAULT_DEPTH))
+            if depth > _MAXIMUM_DEPTH:
+                depth = _MAXIMUM_DEPTH
+        except ValueError:
+            depth = _DEFAULT_DEPTH
+
+        if depth not in generic_serializers:
+            generic_serializers[depth] = generic_serializer(crud_model, depth)
+        return generic_serializers[depth]
 
     @api_view(['GET'])
     def generic_get_list(request: Request):
         instances = crud_model.objects.all()
-        serializer = GenericSerializer(instances, many=True)
+        serializer = _get_or_create_serializer(request)(instances, many=True)
         return Response(serializer.data)
 
     @api_view(['GET'])
     def generic_get_detail(request: Request, pk: int):
         instance = crud_model.objects.get(pk=pk)
-        serializer = GenericSerializer(instance, many=False)
+        serializer = _get_or_create_serializer(request)(instance, many=False)
         return Response(serializer.data)
 
+    # TODO Kevin: How are POST requests affected by serialization depth?
     @api_view(['POST'])
     def generic_create(request: Request):
-        serializer = GenericSerializer(data=request.data)
+        serializer = _get_or_create_serializer(request)(data=request.data)
         if serializer.is_valid():
             serializer.save()
         return Response(serializer.data)
@@ -154,7 +175,7 @@ def generic_crud(crud_model: Type[Model], exclude: set[CrudOps] = None) -> Itera
     @api_view(['POST'])
     def generic_update(request: Request, pk: int):
         instance = crud_model.objects.get(pk)
-        serializer = GenericSerializer(instance=instance, data=request.data)
+        serializer = _get_or_create_serializer(request)(instance=instance, data=request.data)
         if serializer.is_valid():
             serializer.save()
         return Response(serializer.data)
@@ -204,7 +225,7 @@ def crud_overview(urls: list[path]) -> None:
     }
     # overview_dict['OTHER'] = [url.pattern._route for url in urls if url.pattern._route not in set(chain(overview_dict.values()))]
 
-    url_name = 'crud_overview'
+    url_name = 'crud-overview'
 
     @api_view(['GET'])
     def overview_get(request):
