@@ -11,6 +11,10 @@ defineProps({
     indent: {
         type: Number,
         required: true,
+    },
+    description: {
+        type: String,
+        required: false,
     }
 })
 </script>
@@ -32,13 +36,13 @@ export default {
     methods: {
         mouseEnter(pos) {
             // console.log(this.row + "-" + this.indent);
-            this.$emit("mouseEntered", this.row, this.indent);
+            this.$emit("mouseEntered", this.indent);
         },
         mouseLeft(pos) {
-            this.$emit("mouseLeft", this.row, this.indent);
+            this.$emit("mouseLeft", this.indent);
         },
         selectCard(pos) {
-            this.$emit('selectCard', this.row, this.indent);
+            this.$emit('selectCard', this.indent);
         },
     }
 }
@@ -52,7 +56,8 @@ export default {
         <p class="description">
             {{ this.row }}
             {{ this.indent }}
-            heueuih
+            {{ this.description }}
+
         </p>
     </div>
 </template>
@@ -83,5 +88,6 @@ p.description {
     border-radius: 5pt;
     margin: 5px;
     margin-bottom: 0;
+    text-overflow: ellipsis;
 }
 </style>

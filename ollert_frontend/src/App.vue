@@ -2,11 +2,21 @@
 
 </script>
 
+<script>
+import SockertioService from './socket.ts';
+
+export default {
+  created() {
+    SockertioService.setupSocketConnection();
+  }
+}
+</script>
+
 <template>
   <header>
     <div class="wrapper">
       <nav>
-        
+
       </nav>
     </div>
   </header>
