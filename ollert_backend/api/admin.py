@@ -19,6 +19,7 @@ class CardInlines(OrderedTabularInline):
     readonly_fields = ('pk', 'order', 'move_up_down_links',)
     ordering = ('order',)
     extra = 0
+    show_change_link = True
 
 
 class CardListAdmin(OrderedInlineModelAdminMixin, ModelAdmin):

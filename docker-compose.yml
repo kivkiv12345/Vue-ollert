@@ -7,9 +7,10 @@ services:
       - POSTGRES_DB=postgres
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
+    ports:
+      - "5432:5432"  # Forward the port, so we can use the container when running Django locally for debug purposes.
   api:
     build: ollert_backend
-    command: python3 manage.py makemigrations && python3 manage.py migrate && python3 manage.py runserver 0.0.0.0:8000
     volumes:
       - .:/code
     ports:

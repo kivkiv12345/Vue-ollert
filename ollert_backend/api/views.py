@@ -28,7 +28,7 @@ _DELETE_SUFFIX = '-delete'
 class CardSerializer(ModelSerializer):
     class Meta:
         model = Card
-        fields = ['id', 'name', 'order']
+        fields = ['id', 'name', 'order', 'description']
 
 
 class CardListSerializer(ModelSerializer):
@@ -52,41 +52,62 @@ def cardlist_list(request: Request):
 
 
 @api_view(['POST'])
-# def card_move(request: Request, card_pk: int, list_pk: int, order_id: int):
-def card_move(request: Request):
-    error = None
-    try:
-        data = request.data
-        card = Card.objects.get(pk=data['card_id'])
-        card_list = CardList.objects.get(pk=data['list_id'])
-        card.cardlist = card_list
-        if 'row' in data:
+def card_move(request: Request) -> Response:
+    """
+    Move a card to a specific index and card.
+
+    Expected JSON:
+    {
+        "card_id": int,
+        "list_id": int,
+        "row": int
+    }
+    """
+
+    data = request.data
+    card = Card.objects.get(pk=data['card_id'])
+    card_list = CardList.objects.get(pk=data['list_id'])
+    card.cardlist = card_list
+    if 'row' in data:
+        if card.order != data['row']:  # Card.to() only saves if the order has changed...
             card.to(data['row'])
-        else:
-            card.bottom()
-    except Exception as e:
-        error = e
+        else:  # Otherwise we save the card ourselves.
+            card.save()
+    else:
+        card.order = None
+        card.save()
 
-    # TODO Kevin: Pretty dumb to serialize the exception like this
-    return Response(serialize_cardlists(), status=status.HTTP_200_OK, exception=error)
+    return Response(serialize_cardlists(), status=status.HTTP_200_OK)
 
 
-def generic_serializer(crud_model: Type[Model], depth_limit: int = 0) -> Type[ModelSerializer]:
+def generic_serializer(crud_model: Type[Model], depth_limit: int = 0, field_exclude: Iterable[str] = ()) -> Type[ModelSerializer]:
     """
     Creates a Generic recursive ModelSerializer for the provided model
 
     :param crud_model: Model subclass for which a serializer should be created.
     :param depth_limit: Maximum relation depth, below which objects won't be nested.
+    :param field_exclude: List of field names to be excluded from serialization.
 
     :returns: The new ModelSerializer class.
     """
 
-    class GenericSerializer(ModelSerializer):
+    # class GenericSerializer(ModelSerializer):
+    #     #cards = CardSerializer(many=True)
+    #
+    #     class Meta:
+    #         model = crud_model
+    #         fields = [field.name for field in chain(crud_model._meta.fields, crud_model._meta.related_objects) if field]
+    #         depth = depth_limit
 
-        class Meta:
-            model = crud_model
-            fields = '__all__'
-            depth = depth_limit
+    # Create the class using the type function, to allow setting custom serializers for related sets
+    GenericSerializer = type('GenericSerializer', (ModelSerializer,), {
+        # TODO Kevin: Serialize related sets here, pass on excluded fields
+        'Meta': type('Meta', (), {
+            "model": crud_model,
+            "fields": [field.name for field in chain(crud_model._meta.fields, crud_model._meta.related_objects) if field],
+            "depth": depth_limit,
+        })
+    })
 
     return GenericSerializer
 
