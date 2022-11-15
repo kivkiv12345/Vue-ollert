@@ -91,11 +91,12 @@ def generic_serializer(crud_model: Type[Model], depth_limit: int = 0, field_excl
     """
 
     if depth_limit > 0:  # We may create serializers for related sets...
-        related_sets = {  # Serialize related sets, and disallow the related model from going back through the ForeignKey
-            rel.related_name: generic_serializer(rel.related_model, depth_limit-1, {rel.remote_field.name})
+        # Generate a dictionary where keys are foreign key fields or related set field names, and values are serializers
+        related_sets: dict[str, Type[ModelSerializer]] = {  # Serialize related sets, and disallow the related model from going back through the ForeignKey
+            rel.related_name: generic_serializer(rel.related_model, depth_limit-1, {rel.remote_field.name})(many=True)
             for rel in crud_model._meta.related_objects if rel.name not in field_exclude
         } | {  # Serialize ForeignKey, and disallow the related model from going back through the related set
-            field.name: generic_serializer(field.related_model, depth_limit-1, {field.remote_field.name})
+            field.name: generic_serializer(field.related_model, depth_limit-1, {field.remote_field.name})(many=False)
             for field in crud_model._meta.fields if isinstance(field, ForeignKey) and field.name not in field_exclude
         }
     else:
@@ -110,7 +111,6 @@ def generic_serializer(crud_model: Type[Model], depth_limit: int = 0, field_excl
             "model": crud_model,
             "fields": [field.name for field in chain(crud_model._meta.fields, crud_model._meta.related_objects) if field.name not in field_exclude],
             "depth": depth_limit if related_sets else 0,  # We basically ignore depth, when we generate the classes ourselves ¯\_(ツ)_/¯
-            "exclude": tuple(field_exclude),  # This doesn't really seem to do anything... *sigh*
         })
     })
 
@@ -168,15 +168,15 @@ def generic_crud(crud_model: Type[Model], exclude: Iterable[CrudOps] = None) -> 
     @api_view(['POST'])
     def generic_create(request: Request):
         serializer = _get_or_create_serializer(request)(data=request.data)
-        if serializer.is_valid():
+        if serializer.is_valid(raise_exception=True):
             serializer.save()
         return Response(serializer.data)
 
     @api_view(['POST'])
     def generic_update(request: Request, pk: int):
-        instance = crud_model.objects.get(pk)
+        instance = crud_model.objects.get(pk=pk)
         serializer = _get_or_create_serializer(request)(instance=instance, data=request.data)
-        if serializer.is_valid():
+        if serializer.is_valid(raise_exception=True):
             serializer.save()
         return Response(serializer.data)
 
