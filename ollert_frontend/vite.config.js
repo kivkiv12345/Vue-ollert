@@ -9,6 +9,7 @@ export default defineConfig({
   plugins: [vue(), vueJsx()],
   resolve: {
     alias: {
+      "net": "net-browserify",
       "@": fileURLToPath(new URL("./src", import.meta.url)),
     },
   },

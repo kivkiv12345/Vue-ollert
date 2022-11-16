@@ -47,8 +47,10 @@ export default {
 	methods: {
 		mouseEntered(indent, isCard) {
 			if (isCard) {
+				console.log("Settings position row", indent)
 				this.currentPositionRow = indent;
 			} else if (!isCard) {
+				console.log("Settings position list", indent)
 				this.currentPositionList = indent;
 			}
 
@@ -73,30 +75,48 @@ export default {
 			}
 		},
 		async postMoveCard(list, row, from_list, from_row) {
-			let body = {
-				"card_id": this.cardLists[from_list].cards[from_row].id, // Cards id
-				"list_id": this.cardLists[list].id, // Lists id
+			try {
+				let body = {
+					"card_id": this.cardLists[from_list].cards[from_row].id, // Cards id
+					"list_id": this.cardLists[list].id, // Lists id
+				}
+				if (!isNaN(row)) {
+					body["row"] = row;
+				}
+
+				// let mycards = Array.from(this.cardLists.slice());
+
+				// let card = mycards[from_list].cards[from_row];
+				// if (isNaN(row)) {
+				// 	mycards[list].cards.splice(row, 0, card);
+				// } else {
+				// 	mycards[list].cards.push(card);
+				// }
+				// mycards[from_list].cards.splice(0, from_row);
+
+				// console.log(mycards, this.cardLists, row);
+
+				console.log(body);
+
+				this.movingCardList = NaN;
+				this.movingCardRow = NaN;
+
+				let raw_lists = await fetch("http://" + import.meta.env.VITE_DATABASE_URL + "/card-move/", {
+					method: "POST",
+					headers: {
+						"Accept": "application/json",
+						"Content-Type": "application/json"
+					},
+					body: JSON.stringify(body)
+				});
+				let x = await raw_lists.json();
+				this.cardLists = x
+				console.log(x);
+			} catch (e) {
+				console.log(e);
+				return;
 			}
 
-			if (!isNaN(row)) {
-				body["row"] = row;
-			}
-
-			console.log(body);
-
-
-			let raw_lists = await fetch("http://" + import.meta.env.VITE_DATABASE_URL + "/card-move/", {
-				method: "POST",
-				headers: {
-					"Accept": "application/json",
-					"Content-Type": "application/json"
-				},
-				body: JSON.stringify(body)
-			});
-
-			let x = await raw_lists.json();
-			this.cardLists = x
-			console.log(x);
 		}
 	}
 }
@@ -111,9 +131,15 @@ export default {
 		</button>
 		<div class="card-list-holder">
 			<CardLists v-for="x, i in cardLists" :name="x.name" :items="x.cards" :indent="i"
+				:v-bind="currentPositionList" :is-selected-list="currentPositionList == i"
+				:moving="!isNaN(movingCardList) && !(movingCardRow == currentPositionRow && currentPositionList == movingCardList)"
+				:moving-card="movingCardRow" :selected-card="currentPositionRow" :is-moving-list="movingCardList == i"
 				@mouse-entered="mouseEntered" @mouse-left="mouseLeft" @select-card="selectCard">
 
 			</CardLists>
+			<div style="margin: auto; margin-left:10pt;">
+				<h1 style="color: white;">+</h1>
+			</div>
 		</div>
 	</body>
 </template>

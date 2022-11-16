@@ -12,9 +12,21 @@ defineProps({
         type: Number,
         required: true,
     },
+    order: {
+        type: Number,
+        required: false,
+    },
     description: {
         type: String,
         required: false,
+    },
+    selected: {
+        type: Boolean,
+        required: true
+    },
+    moving: {
+        type: Boolean,
+        required: true,
     }
 })
 </script>
@@ -22,6 +34,11 @@ defineProps({
 <script>
 
 export default {
+    emits: [
+        "mouseEntered",
+        "mouseLeft",
+        "selectCard",
+    ],
     data() {
         return {
             "body_id": "card-" + this.row + "-" + this.indent,
@@ -49,25 +66,38 @@ export default {
 </script>
 
 <template>
-    <div class="body" v-bind:id="body_id">
-        <h4 class="card-header">
-            {{ name }}
-        </h4>
-        <p class="description">
-            {{ this.row }}
-            {{ this.indent }}
-            {{ this.description }}
+    <div v-bind:id="body_id" class="body">
+        <div v-if="selected && !moving" class="body body-color" style="margin-bottom: 5pt !important;">
 
-        </p>
+        </div>
+        <div v-bind:class="moving ? 'ghost body body-color' : 'body body-color'">
+            <div>
+                <h4 class="card-header">
+                    {{ order }}
+                    {{ name }}
+                </h4>
+                <p class="description" v-if="description != undefined">
+
+                    {{ description }}
+                </p>
+            </div>
+        </div>
     </div>
 </template>
 
 <style>
-div.body {
+div.ghost {
+    background-color: grey !important;
+}
+
+div.body-color {
     background-color: burlywood;
+    margin: 0pt !important;
+}
+
+div.body {
     border-radius: 5pt;
-    min-height: 30pt;
-    margin: 10pt;
+    min-height: 20pt;
     padding-top: 5px;
     padding-bottom: 5px;
 }

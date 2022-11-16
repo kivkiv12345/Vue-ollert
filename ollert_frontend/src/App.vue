@@ -3,11 +3,12 @@
 </script>
 
 <script>
-import SockertioService from './socket.ts';
+
 
 export default {
   created() {
-    SockertioService.setupSocketConnection();
+    // const server = createServer()
+
   }
 }
 </script>

@@ -11,6 +11,22 @@ defineProps({
     indent: {
         type: Number,
         required: true
+    },
+    isSelectedList: {
+        type: Boolean,
+        required: true,
+    },
+    selectedCard: {
+        type: Number,
+        required: false
+    },
+    movingCard: {
+        type: Number,
+        required: false
+    },
+    isMovingList: {
+        type: Boolean,
+        required: true,
     }
 })
 </script>
@@ -47,16 +63,23 @@ export default {
 </script>
 
 <template>
-    <div class="task-body" v-bind:id="'list-' + this.indent">
+    <!-- <p v-if="isSelectedList">
+        {{ isSelectedList }}
+    </p> -->
+    <div class="task-body" v-bind:id="'list-' + indent">
         <h2 class="list-header">
             {{ name }}
         </h2>
-        <div class="items">
+        <div class="items unselectable">
             <Card v-for="x, i in items" :name="x.name" :indent="i" :row="indent" :description="x.description"
-                @mouse-entered="mouseEnteredCard" @mouse-left="mouseLeftCard" @select-card="selectCard"
-                class="unselectable">
+                :selected="isSelectedList && i == selectedCard && !isNaN(movingCard)"
+                :moving="!isNaN(movingCard) && movingCard == i && isMovingList" @mouse-entered="mouseEnteredCard"
+                :order="x.order" @mouse-left="mouseLeftCard" @select-card="selectCard">
 
             </Card>
+            <div class="body body-color" v-if="isSelectedList && isNaN(selectedCard) && !isNaN(movingCard)">
+
+            </div>
         </div>
     </div>
 </template>
