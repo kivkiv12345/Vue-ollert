@@ -7,13 +7,15 @@ from enum import Enum
 from itertools import chain
 from django.urls import path
 from typing import Type, Iterable
+
+from drf_writable_nested import WritableNestedModelSerializer
 from rest_framework import status
 from .models import CardList, Card
 from django.shortcuts import render
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
-from rest_framework.serializers import ModelSerializer
+from rest_framework.serializers import ModelSerializer, ListSerializer
 from django.db.models import Model, QuerySet, ForeignKey
 from django.db.models.fields.related_descriptors import ReverseManyToOneDescriptor, ReverseOneToOneDescriptor, \
     ManyToManyDescriptor
@@ -66,20 +68,23 @@ def card_move(request: Request) -> Response:
     data = request.data
     card = Card.objects.get(pk=data['card_id'])
     card_list = CardList.objects.get(pk=data['list_id'])
+    card.order = data.get('row', None)
     card.cardlist = card_list
-    if 'row' in data:
-        if card.order != data['row']:  # Card.to() only saves if the order has changed...
-            card.to(data['row'])
-        else:  # Otherwise we save the card ourselves.
+    card.save()
+    if False:
+        if 'row' in data:
+            if card.order != data['row']:  # Card.to() only saves if the order has changed...
+                card.to(data['row'])
+            else:  # Otherwise we save the card ourselves.
+                card.save()
+        else:
+            card.order = None
             card.save()
-    else:
-        card.order = None
-        card.save()
 
     return Response(serialize_cardlists(), status=status.HTTP_200_OK)
 
 
-def generic_serializer(crud_model: Type[Model], depth_limit: int = 0, field_exclude: Iterable[str] = ()) -> Type[ModelSerializer]:
+def generic_serializer(crud_model: Type[Model], depth_limit: int = 0, field_exclude: Iterable[str] = ()) -> Type[WritableNestedModelSerializer]:
     """
     Creates a Generic recursive ModelSerializer for the provided model
 
@@ -102,11 +107,23 @@ def generic_serializer(crud_model: Type[Model], depth_limit: int = 0, field_excl
     else:
         related_sets = {}
 
-    # TODO Kevin: Why won't Django REST stop serializing ForeignKeys that are in Meta.exclude and not in Meta.fields ??
+    # TODO Kevin: Updating the cards of a cardlist will delete cards that are absent from the recieved JSON.
+    #   This is probably not desired.
 
-    # Create the class using the type function, to allow setting custom serializers for related sets
-    GenericSerializer = type('GenericSerializer', (ModelSerializer,), {
+    def to_internal_value(self: WritableNestedModelSerializer, data: dict):
+        assert isinstance(data, dict)
+        for fieldname, fieldvalue in data.items():
+            if isinstance(fieldvalue, (int, list)) and isinstance(serfield := self.fields[fieldname], ModelSerializer):
+                if isinstance(serfield, ListSerializer):  # TODO Kevin: Haven't tested if checking on ListSerializer works
+                    data[fieldname] = type(serfield)(serfield.Meta.model.objects.filter(pk__in=fieldvalue), many=True).data
+                else:
+                    data[fieldname] = type(serfield)(serfield.Meta.model.objects.get(pk=fieldvalue), many=False).data
+        return super(WritableNestedModelSerializer, self).to_internal_value(data)
+
+    # Create the class using the 'type' function, to allow setting custom serializers for related sets
+    GenericSerializer = type('GenericSerializer', (WritableNestedModelSerializer,), {
         **related_sets,
+        'to_internal_value': to_internal_value,
         'Meta': type('Meta', (), {
             "model": crud_model,
             "fields": [field.name for field in chain(crud_model._meta.fields, crud_model._meta.related_objects) if field.name not in field_exclude],
@@ -135,7 +152,6 @@ def generic_crud(crud_model: Type[Model], exclude: Iterable[CrudOps] = None) -> 
     :returns: A tuple of path() instances to be inserted into your app's urlpatterns
     """
 
-    # TODO Kevin: Subclass ModelSerializer to support saving nested
     generic_serializers = {_DEFAULT_DEPTH: generic_serializer(crud_model, _DEFAULT_DEPTH)}
 
     def _get_or_create_serializer(request: Request) -> Type[ModelSerializer]:
@@ -164,7 +180,6 @@ def generic_crud(crud_model: Type[Model], exclude: Iterable[CrudOps] = None) -> 
         serializer = _get_or_create_serializer(request)(instance, many=False)
         return Response(serializer.data)
 
-    # TODO Kevin: How are POST requests affected by serialization depth?
     @api_view(['POST'])
     def generic_create(request: Request):
         serializer = _get_or_create_serializer(request)(data=request.data)

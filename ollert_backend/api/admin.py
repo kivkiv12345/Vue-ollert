@@ -10,7 +10,7 @@ from .models import Card, CardList
 
 
 class CardAdmin(ModelAdmin):
-    list_display = ['name', 'pk', 'order']
+    list_display = ['name', 'pk', 'order', 'cardlist']
 
 
 class CardInlines(OrderedTabularInline):
