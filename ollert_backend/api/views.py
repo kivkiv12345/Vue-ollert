@@ -25,6 +25,7 @@ _DETAIL_SUFFIX = '-detail'
 _CREATE_SUFFIX = '-create'
 _UPDATE_SUFFIX = '-update'
 _DELETE_SUFFIX = '-delete'
+_INSPECT_SUFFIX = '-inspect'
 
 _DEFAULT_DEPTH = 2  # Default serialization depth.
 _MAXIMUM_DEPTH = 10
@@ -107,7 +108,7 @@ def generic_serializer(crud_model: Type[Model], depth_limit: int = 0, field_excl
     else:
         related_sets = {}
 
-    # TODO Kevin: Updating the cards of a cardlist will delete cards that are absent from the recieved JSON.
+    # TODO Kevin: Updating the cards of a cardlist will delete cards that are absent from the received JSON.
     #   This is probably not desired.
 
     def to_internal_value(self: WritableNestedModelSerializer, data: dict):
@@ -140,6 +141,7 @@ class CrudOps(Enum):
     DETAIL = 2
     UPDATE = 3
     DELETE = 4
+    MODEL = 5
 
 
 def generic_crud(crud_model: Type[Model], exclude: Iterable[CrudOps] = None) -> Iterable[path]:
@@ -200,6 +202,15 @@ def generic_crud(crud_model: Type[Model], exclude: Iterable[CrudOps] = None) -> 
         crud_model.objects.filter(pk=pk).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    @api_view(['GET'])
+    def generic_inspect(request: Request):
+        fieldlist_json = {
+            field.name: {'type': str(field.description),
+                         'isRequired': False if field.null or field.blank else True,
+                         'primaryKey': field.primary_key} for field in crud_model._meta.fields
+        }
+        return Response(fieldlist_json)
+
     model_name = crud_model.__name__.lower()
 
     list_url = f"{model_name}{_LIST_SUFFIX}"
@@ -207,6 +218,7 @@ def generic_crud(crud_model: Type[Model], exclude: Iterable[CrudOps] = None) -> 
     create_url = f"{model_name}{_CREATE_SUFFIX}"
     update_url = f"{model_name}{_UPDATE_SUFFIX}"
     delete_url = f"{model_name}{_DELETE_SUFFIX}"
+    model_url = f"{model_name}"  # Inspect model structure.
 
     operations: list[path] = []
     if exclude is None or CrudOps.LIST not in exclude:
@@ -219,6 +231,8 @@ def generic_crud(crud_model: Type[Model], exclude: Iterable[CrudOps] = None) -> 
         operations.append(path(f"{update_url}/<str:pk>/", generic_update, name=update_url))
     if exclude is None or CrudOps.DELETE not in exclude:
         operations.append(path(f"{delete_url}/<str:pk>/", generic_delete, name=delete_url))
+    if exclude is None or CrudOps.MODEL not in exclude:
+        operations.append(path(f"{model_url}/", generic_inspect, name=f"{model_url}-inspect"))
 
     return operations
 
@@ -237,6 +251,7 @@ def crud_overview(urls: list[path]) -> None:
         'CREATE': [url.pattern._route for url in urls if url.name.endswith(_CREATE_SUFFIX)],
         'UPDATE': [url.pattern._route for url in urls if url.name.endswith(_UPDATE_SUFFIX)],
         'DELETE': [url.pattern._route for url in urls if url.name.endswith(_DELETE_SUFFIX)],
+        'MODEL': [url.pattern._route for url in urls if url.name.endswith(_INSPECT_SUFFIX)]
     }
     # overview_dict['OTHER'] = [url.pattern._route for url in urls if url.pattern._route not in set(chain(overview_dict.values()))]
 
