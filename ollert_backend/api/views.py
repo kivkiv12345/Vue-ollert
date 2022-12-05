@@ -206,6 +206,7 @@ def generic_crud(crud_model: Type[Model], exclude: Iterable[CrudOps] = None) -> 
     def generic_inspect(request: Request):
         fieldlist_json = {
             field.name: {'type': str(field.description),
+                         'internalType': field.get_internal_type(),
                          'isRequired': False if field.null or field.blank else True,
                          'primaryKey': field.primary_key} for field in crud_model._meta.fields
         }
