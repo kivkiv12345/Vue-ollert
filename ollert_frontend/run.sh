@@ -1,1 +1,1 @@
-npm run dev -- --mode devRUN.
+npm run dev -- --mode production

@@ -1,134 +1,146 @@
 <script>
-import CardLists from '../components/CardLists.vue';
-async function getCardLists() {
-	var raw_lists = await fetch("http://" + import.meta.env.VITE_DATABASE_URL + "/cardlist-list/");
+	import CardLists from '../components/CardLists.vue';
+	import NewOverlay from '../components/NewOverlay.vue';
 
-	let x = await raw_lists.json();
+	let making = "";
 
-	console.log(x);
-
-	return x;
-};
+	async function getCardLists() {
+		var raw_lists = await fetch("http://" + get_url() + "/cardlist-list/");
 
 
-export default {
-	methods: {
-		async makeNewCardList() {
-			await fetch("http://" + import.meta.env.VITE_DATABASE_URL + "/cardlist-create/", {
-				method: "POST",
-				headers: {
-					"Accept": "application/json",
-					"Content-Type": "application/json"
-				},
-				body: JSON.stringify({
-					"name": "Liste",
-				})
-			});
-			console.log("Posted");
+		let x = await raw_lists.json();
+
+		console.log(x);
+
+		return x;
+	};
+
+	function makeNewCardList() {
+		making = "cardlist"
+		showModal = true;
+	}
+
+	function makeNewCard() {
+
+	}
+
+	function get_url() {
+		return (import.meta.env.VITE_DATABASE_URL != "" ? import.meta.env.VITE_DATABASE_URL : location.hostname) + ":8000/api";
+	}
+
+	export default {
+		async mounted() {
+
+			document.addEventListener('mouseup', this.mouseReleased, true)
+			this.cardLists = await getCardLists();
 		},
-	},
-	data() {
-		return {
-			"cardLists": [],
-			"currentPositionList": NaN, // The current list being hovered over
-			"currentPositionRow": NaN, // The current card/row being hovered over
-			"movingCardList": NaN, // The list of the card currently being moved; If NaN no card is being moved.
-			"movingCardRow": NaN, // The row of the card currently being moved; If NaN no card is being moved.
-		};
-	},
-	async mounted() {
+		data() {
+			return {
+				"cardLists": [],
+				"currentPositionList": NaN, // The current list being hovered over
+				"currentPositionRow": NaN, // The current card/row being hovered over
+				"movingCardList": NaN, // The list of the card currently being moved; If NaN no card is being moved.
+				"movingCardRow": NaN, // The row of the card currently being moved; If NaN no card is being moved.
 
-		document.addEventListener('mouseup', this.mouseReleased, true)
-		this.cardLists = await getCardLists();
-
-
-	},
-	components: { CardLists },
-	methods: {
-		mouseEntered(indent, isCard) {
-			if (isCard) {
-				console.log("Settings position row", indent)
-				this.currentPositionRow = indent;
-			} else if (!isCard) {
-				console.log("Settings position list", indent)
-				this.currentPositionList = indent;
-			}
-
-			// console.log(this.cardLists[list].cards[row].name);
+				"showModal": false,
+			};
 		},
-		mouseLeft(indent, leavingCard) {
-			if (this.currentPositionList == indent && !leavingCard) {
-				this.currentPositionList = NaN;
-			} if (this.currentPositionRow == indent && leavingCard) {
-				this.currentPositionRow = NaN;
-			}
-		},
-		selectCard(list, row) {
-			this.movingCardRow = row;
-			this.movingCardList = list;
-			console.log("Selecting", row, list);
-		},
-		mouseReleased(pos) {
-			if (!isNaN(this.currentPositionList)) {
-				console.log("Moving card to", this.currentPositionList, this.currentPositionRow);
-				this.postMoveCard(this.currentPositionList, this.currentPositionRow, this.movingCardList, this.movingCardRow)
-			}
-		},
-		async postMoveCard(list, row, from_list, from_row) {
-			try {
-				let body = {
-					"card_id": this.cardLists[from_list].cards[from_row].id, // Cards id
-					"list_id": this.cardLists[list].id, // Lists id
+		components: { CardLists, NewOverlay },
+		methods: {
+			mouseEntered(indent, isCard) {
+				if (isCard) {
+					console.log("Settings position row", indent)
+					this.currentPositionRow = indent;
+				} else if (!isCard) {
+					console.log("Settings position list", indent)
+					this.currentPositionList = indent;
 				}
-				if (!isNaN(row)) {
-					body["row"] = row;
+			},
+			mouseEntered(indent, isCard) {
+				if (isCard) {
+					console.log("Settings position row", indent)
+					this.currentPositionRow = indent;
+				} else if (!isCard) {
+					console.log("Settings position list", indent)
+					this.currentPositionList = indent;
 				}
 
-				// let mycards = Array.from(this.cardLists.slice());
+				// console.log(this.cardLists[list].cards[row].name);
+			},
+			mouseLeft(indent, leavingCard) {
+				if (this.currentPositionList == indent && !leavingCard) {
+					this.currentPositionList = NaN;
+				} if (this.currentPositionRow == indent && leavingCard) {
+					this.currentPositionRow = NaN;
+				}
+			},
+			selectCard(list, row) {
+				this.movingCardRow = row;
+				this.movingCardList = list;
+				console.log("Selecting", row, list);
+			},
+			mouseReleased(pos) {
+				if (!isNaN(this.currentPositionList)) {
+					console.log("Moving card to", this.currentPositionList, this.currentPositionRow);
+					this.postMoveCard(this.currentPositionList, this.currentPositionRow, this.movingCardList, this.movingCardRow)
+				}
+			},
+			async postMoveCard(list, row, from_list, from_row) {
+				try {
+					let body = {
+						"card_id": this.cardLists[from_list].cards[from_row].id, // Cards id
+						"list_id": this.cardLists[list].id, // Lists id
+					}
+					if (!isNaN(row)) {
+						body["row"] = row;
+					}
 
-				// let card = mycards[from_list].cards[from_row];
-				// if (isNaN(row)) {
-				// 	mycards[list].cards.splice(row, 0, card);
-				// } else {
-				// 	mycards[list].cards.push(card);
-				// }
-				// mycards[from_list].cards.splice(0, from_row);
+					// let mycards = Array.from(this.cardLists.slice());
 
-				// console.log(mycards, this.cardLists, row);
+					// let card = mycards[from_list].cards[from_row];
+					// if (isNaN(row)) {
+					// 	mycards[list].cards.splice(row, 0, card);
+					// } else {
+					// 	mycards[list].cards.push(card);
+					// }
+					// mycards[from_list].cards.splice(0, from_row);
 
-				console.log(body);
+					// console.log(mycards, this.cardLists, row);
 
-				this.movingCardList = NaN;
-				this.movingCardRow = NaN;
+					console.log(body);
 
-				let raw_lists = await fetch("http://" + import.meta.env.VITE_DATABASE_URL + "/card-move/", {
-					method: "POST",
-					headers: {
-						"Accept": "application/json",
-						"Content-Type": "application/json"
-					},
-					body: JSON.stringify(body)
-				});
-				let x = await raw_lists.json();
-				this.cardLists = x
-				console.log(x);
-			} catch (e) {
-				console.log(e);
-				return;
+					this.movingCardList = NaN;
+					this.movingCardRow = NaN;
+
+					let raw_lists = await fetch("http://" + get_url + "/card-move/", {
+						method: "POST",
+						headers: {
+							"Accept": "application/json",
+							"Content-Type": "application/json"
+						},
+						body: JSON.stringify(body)
+					});
+					let x = await raw_lists.json();
+					this.cardLists = x
+					console.log(x);
+				} catch (e) {
+					console.log(e);
+					return;
+				}
+
 			}
-
 		}
 	}
-}
 </script>
+
 
 <template>
 
 	<body @mousemove="">
 		<br>
-		<button type="button" @click="makeNewCardList()">
+		<!-- <button type="button" @click="">
 			bruh
-		</button>
+		</button> -->
 		<div class="card-list-holder">
 			<CardLists v-for="x, i in cardLists" :name="x.name" :items="x.cards" :indent="i"
 				:v-bind="currentPositionList" :is-selected-list="currentPositionList == i"
@@ -138,18 +150,40 @@ export default {
 
 			</CardLists>
 			<div style="margin: auto; margin-left:10pt;">
-				<h1 style="color: white;">+</h1>
+				<button class="round" @click="makeNewCardList()">
+					<div class="button">+</div>
+				</button>
 			</div>
 		</div>
+		<Teleport to="body">
+			<NewOverlay :show="showModal" :field_type="making" @close="showModal = false" />
+		</Teleport>
 	</body>
 </template>
 
 <style>
-body {
-	background-color: #222;
-}
+	body {
+		background-color: #222;
+	}
 
-div.card-list-holder {
-	display: flex;
-}
+	div.card-list-holder {
+		display: flex;
+	}
+
+	.button {
+		color: black;
+	}
+
+	button.round {
+		border-radius: 50%;
+		width: 51px;
+		height: 51px;
+		background-color: #04AA6D;
+		border: none;
+		color: white;
+		text-align: center;
+		text-decoration: none;
+		display: inline;
+		font-size: 30px;
+	}
 </style>
