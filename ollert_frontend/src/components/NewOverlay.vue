@@ -5,13 +5,22 @@
         <div class="Mask" v-if="show" @click="$emit('close')">
             <div class="wrapper">
                 <div class="modal">
-                    <form>
+                    <h1>
+                        New {{ this.making }}
+                    </h1>
+                    <form @submit.prevent="submit">
                         <div v-for="value, key in fields">
-                            <input type="getTypeOfInput(value)" \>
-
-                            {{ key }}
+                            <div v-if="key != 'id'" class="form-field">
+                                <label for="{{key}}_input_field">{{ capitalizeFirstLetter(key) }}</label>
+                                <input type="text" id="{{key}}_input_field" name="{{key}}">
+                            </div>
                         </div>
+                        <div style="height: 20px"></div>
+                        <input type="submit" id="SubmitButton" value="Send" />
+
+
                     </form>
+
                 </div>
             </div>
         </div>
@@ -22,7 +31,7 @@
 import { def } from '@vue/shared';
 
 defineProps({
-    field_type: {
+    making: {
         type: String,
         required: true,
     },
@@ -33,26 +42,59 @@ defineProps({
 })
 </script>
 <script>
+function capitalizeFirstLetter(string) {
+    return string.charAt(0).toUpperCase() + string.slice(1);
+}
+
+
 function getTypeOfInput(value) {
     let type = value['internalType'].toLower();
     if (type.contains("integer")) {
-        return "number";
+        return "text";
     }
+    return "text"
+}
+
+function get_url() {
+    return (import.meta.env.VITE_DATABASE_URL != undefined || import.meta.env.VITE_DATABASE_URL != "" ? import.meta.env.VITE_DATABASE_URL : location.hostname) + ":8000/api";
 }
 
 export default {
     methods: {
         async get_fields() {
-            let raw_lists = await fetch("http://" + import.meta.env.VITE_DATABASE_URL + "/" + this.field_type + "/", {
+            if (this.making == undefined) {
+                console.log("Making not set")
+                return;
+            }
+            console.log("Getting fields from ", "http://" + get_url() + "/" + this.making + "/")
+            let raw_lists = await fetch("http://" + get_url() + "/" + this.making + "/", {
                 method: "GET",
                 headers: {
                     "Accept": "application/json",
                     "Content-Type": "application/json"
                 },
             });
+            console.log("Gotted da info")
             let x = await raw_lists.json();
-
+            console.log("Gotted da json", x)
             this.fields = x;
+        },
+        async submit(form) {
+            console.log(form)
+            let body = {}
+            form.target.elements.forEach(element => {
+                body[element.name] = element.value
+            });
+
+
+            let response = await fetch("http://" + get_url() + "/" + making + "-create/", {
+                method: "POST",
+                headers: {
+                    "Accept": "application/json",
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(body)
+            });
         }
     },
     data() {
@@ -62,8 +104,17 @@ export default {
     },
     mounted() {
         console.log(this.show);
+        console.log("Fishsticks")
 
         this.get_fields();
+    },
+    watch: {
+        making(curr, prev) {
+            console.log("Meatsticks")
+            if (curr != "" && curr != undefined) {
+                this.get_fields()
+            }
+        }
     }
 }
 </script>
@@ -75,12 +126,17 @@ div.modal {
 
     border-radius: 8pt;
 
-    display: flex;
+    display: flexbox;
+    padding: 20px;
 }
 
 div.wrapper {
     display: table-cell;
     vertical-align: middle;
+}
+
+div.form-field {
+    display: grid;
 }
 
 div.Mask {

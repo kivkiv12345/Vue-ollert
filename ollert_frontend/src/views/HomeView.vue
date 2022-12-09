@@ -2,8 +2,6 @@
 	import CardLists from '../components/CardLists.vue';
 	import NewOverlay from '../components/NewOverlay.vue';
 
-	let making = "";
-
 	async function getCardLists() {
 		var raw_lists = await fetch("http://" + get_url() + "/cardlist-list/");
 
@@ -15,17 +13,9 @@
 		return x;
 	};
 
-	function makeNewCardList() {
-		making = "cardlist"
-		showModal = true;
-	}
-
-	function makeNewCard() {
-
-	}
 
 	function get_url() {
-		return (import.meta.env.VITE_DATABASE_URL != "" ? import.meta.env.VITE_DATABASE_URL : location.hostname) + ":8000/api";
+		return (import.meta.env.VITE_DATABASE_URL != undefined || import.meta.env.VITE_DATABASE_URL != "" ? import.meta.env.VITE_DATABASE_URL : location.hostname) + ":8000/api";
 	}
 
 	export default {
@@ -43,10 +33,19 @@
 				"movingCardRow": NaN, // The row of the card currently being moved; If NaN no card is being moved.
 
 				"showModal": false,
+				"making": undefined,
 			};
 		},
 		components: { CardLists, NewOverlay },
 		methods: {
+			makeNewCardList() {
+				this.making = "cardlist"
+				this.showModal = true;
+			},
+			exitModal() {
+				this.making = undefined
+				this.showModal = false
+			},
 			mouseEntered(indent, isCard) {
 				if (isCard) {
 					console.log("Settings position row", indent)
@@ -112,7 +111,7 @@
 					this.movingCardList = NaN;
 					this.movingCardRow = NaN;
 
-					let raw_lists = await fetch("http://" + get_url + "/card-move/", {
+					let raw_lists = await fetch("http://" + get_url() + "/card-move/", {
 						method: "POST",
 						headers: {
 							"Accept": "application/json",
@@ -124,7 +123,6 @@
 					this.cardLists = x
 					console.log(x);
 				} catch (e) {
-					console.log(e);
 					return;
 				}
 
@@ -156,7 +154,7 @@
 			</div>
 		</div>
 		<Teleport to="body">
-			<NewOverlay :show="showModal" :field_type="making" @close="showModal = false" />
+			<NewOverlay :show="showModal" :making="this.making" @close="exitModal()" />
 		</Teleport>
 	</body>
 </template>
