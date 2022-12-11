@@ -4,15 +4,15 @@
     <Transition name="modal">
         <div class="Mask" v-if="show" @click="$emit('close')">
             <div class="wrapper">
-                <div class="modal">
-                    <h1>
+                <div class="modal" @click.stop>
+                    <h1 v-if="this.making != undefined">
                         New {{ this.making }}
                     </h1>
                     <form @submit.prevent="submit">
                         <div v-for="value, key in fields">
                             <div v-if="key != 'id'" class="form-field">
-                                <label for="{{key}}_input_field">{{ capitalizeFirstLetter(key) }}</label>
-                                <input type="text" id="{{key}}_input_field" name="{{key}}">
+                                <label v-bind:for="key + '_input_field'">{{ capitalizeFirstLetter(key) }}</label>
+                                <input type="text" v-bind:id="key + 'input_field'" v-bind:name="key">
                             </div>
                         </div>
                         <div style="height: 20px"></div>
@@ -79,15 +79,22 @@ export default {
             console.log("Gotted da json", x)
             this.fields = x;
         },
-        async submit(form) {
-            console.log(form)
-            let body = {}
-            form.target.elements.forEach(element => {
-                body[element.name] = element.value
-            });
+        async submit(formData) {
 
+            console.log(this.fields)
+            console.log(formData.target.elements)
 
-            let response = await fetch("http://" + get_url() + "/" + making + "-create/", {
+            let body = new Map()
+
+            for (const key in this.fields) {
+                if (formData.target.elements.hasOwnProperty(key)) {
+                    body.set(key, eval("formData.target.elements." + key).value);
+                }
+            }
+
+            console.log(body);
+
+            let response = await fetch("http://" + get_url() + "/" + this.making + "-create/", {
                 method: "POST",
                 headers: {
                     "Accept": "application/json",

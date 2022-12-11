@@ -33,8 +33,7 @@
 				"movingCardRow": NaN, // The row of the card currently being moved; If NaN no card is being moved.
 
 				"showModal": false,
-				"making": undefined,
-				"url": import.meta.env.VITE_DATABASE_URL,
+				"making": undefined, // This is passed to the "new item" modal popup to tell it what the user is trying to make a new of
 			};
 		},
 		components: { CardLists, NewOverlay },
@@ -43,7 +42,11 @@
 				this.making = "cardlist"
 				this.showModal = true;
 			},
-			exitModal() {
+			async exitModal() {
+				if (this.making == "cardlist") {
+					this.cardLists = await getCardLists()
+				}
+
 				this.making = undefined
 				this.showModal = false
 			},
@@ -94,18 +97,6 @@
 					if (!isNaN(row)) {
 						body["row"] = row;
 					}
-
-					// let mycards = Array.from(this.cardLists.slice());
-
-					// let card = mycards[from_list].cards[from_row];
-					// if (isNaN(row)) {
-					// 	mycards[list].cards.splice(row, 0, card);
-					// } else {
-					// 	mycards[list].cards.push(card);
-					// }
-					// mycards[from_list].cards.splice(0, from_row);
-
-					// console.log(mycards, this.cardLists, row);
 
 					console.log(body);
 
