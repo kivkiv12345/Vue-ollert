@@ -146,7 +146,7 @@
 			</div>
 		</div>
 		<Teleport to="body">
-			<NewOverlay :show="showModal" :making="this.making" @close="exitModal()" />
+			<NewOverlay :show="showModal" :making="making" @close="exitModal()" />
 		</Teleport>
 	</body>
 </template>

@@ -57,7 +57,7 @@ function getTypeOfInput(value) {
 }
 
 function get_url() {
-    return (import.meta.env.VITE_DATABASE_URL != undefined || import.meta.env.VITE_DATABASE_URL != "" ? import.meta.env.VITE_DATABASE_URL : location.hostname) + ":8000/api";
+    return (import.meta.env.VITE_DATABASE_URL == undefined || import.meta.env.VITE_DATABASE_URL == "" ? location.hostname : import.meta.env.VITE_DATABASE_URL) + ":8000/api";
 }
 
 export default {
