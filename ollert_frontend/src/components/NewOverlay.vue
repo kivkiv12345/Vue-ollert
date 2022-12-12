@@ -12,7 +12,8 @@
                         <div v-for="value, key in fields">
                             <div v-if="key != 'id'" class="form-field">
                                 <label v-bind:for="key + '_input_field'">{{ capitalizeFirstLetter(key) }}</label>
-                                <input type="text" v-bind:id="key + 'input_field'" v-bind:name="key">
+                                <input v-bind:type="getTypeOfInput(value)" v-bind:id="key + 'input_field'"
+                                    v-bind:name="key">
                             </div>
                         </div>
                         <div style="height: 20px"></div>
@@ -48,9 +49,9 @@ function capitalizeFirstLetter(string) {
 
 
 function getTypeOfInput(value) {
-    let type = value['internalType'].toLower();
-    if (type.contains("integer")) {
-        return "text";
+    let type = value['internalType'].toLowerCase();
+    if (type.includes("integer")) {
+        return "number";
     }
     return "text"
 }
