@@ -64,10 +64,8 @@ export default {
     methods: {
         async get_fields() {
             if (this.making == undefined) {
-                console.log("Making not set")
                 return;
             }
-            console.log("Getting fields from ", "http://" + get_url() + "/" + this.making + "/")
             let raw_lists = await fetch("http://" + get_url() + "/" + this.making + "/", {
                 method: "GET",
                 headers: {
@@ -75,9 +73,7 @@ export default {
                     "Content-Type": "application/json"
                 },
             });
-            console.log("Gotted da info")
             let x = await raw_lists.json();
-            console.log("Gotted da json", x)
             this.fields = x;
         },
         async submit(formData) {
@@ -87,13 +83,24 @@ export default {
 
             let body = new Map()
 
+            console.log(this.fields)
+
             for (const key in this.fields) {
                 if (formData.target.elements.hasOwnProperty(key)) {
-                    body.set(key, eval("formData.target.elements." + key).value);
+                    let value = eval("formData.target.elements." + key).value;
+                    let _key = eval("this.fields." + key)
+                    console.log(_key.internalType.toLowerCase())
+                    if (_key.internalType.toLowerCase().includes("integer"))
+                        body.set(key, parseInt(value));
+                    else
+                        body.set(key, value)
                 }
             }
+            body.set("cards", [])
 
-            console.log(body);
+            let jsonBody = JSON.stringify(Object.fromEntries(body));
+
+            console.log("x", jsonBody);
 
             let response = await fetch("http://" + get_url() + "/" + this.making + "-create/", {
                 method: "POST",
@@ -101,7 +108,7 @@ export default {
                     "Accept": "application/json",
                     "Content-Type": "application/json"
                 },
-                body: JSON.stringify(body)
+                body: jsonBody
             });
         }
     },
