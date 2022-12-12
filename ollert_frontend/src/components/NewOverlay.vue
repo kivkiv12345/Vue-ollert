@@ -5,8 +5,8 @@
         <div class="Mask" v-if="show" @click="$emit('close')">
             <div class="wrapper">
                 <div class="modal" @click.stop>
-                    <h1 v-if="this.making != undefined">
-                        New {{ this.making }}
+                    <h1 v-if="making != undefined">
+                        New {{ making }}
                     </h1>
                     <form @submit.prevent="submit">
                         <div v-for="value, key in fields">
