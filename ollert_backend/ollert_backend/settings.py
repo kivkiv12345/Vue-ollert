@@ -12,6 +12,8 @@ https://docs.djangoproject.com/en/4.1/ref/settings/
 
 import os
 from pathlib import Path
+from os.path import exists
+from secrets import choice
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -21,7 +23,17 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-5ce1w3lj!469wqj&kk!qhwk7%%y4gcu$(9f&7*_vx=*(paqf8e'
+#SECRET_KEY = 'django-insecure-5ce1w3lj!469wqj&kk!qhwk7%%y4gcu$(9f&7*_vx=*(paqf8e'
+
+secret_key_file = 'secret_key.txt'
+if not exists(secret_key_file):
+    chars = 'abcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*(-_=+)'
+    key = ''.join(choice(chars) for _ in range(50))
+    with open(secret_key_file, 'w+') as file:
+        file.write(key)
+
+with open(secret_key_file, 'r') as file:
+    SECRET_KEY = file.readline()
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
